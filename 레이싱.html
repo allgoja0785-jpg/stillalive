@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Racing Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    canvas { display: block; }
+    #ui {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: white;
+      font-family: Arial;
+    }
+  </style>
+</head>
+<body>
+<div id="ui">W: 가속 | S: 브레이크 | A/D: 좌우</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// 기본 설정
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// 조명
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(0, 10, 10);
+scene.add(light);
+
+// 바닥 (도로)
+const roadGeometry = new THREE.PlaneGeometry(20, 200);
+const roadMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+const road = new THREE.Mesh(roadGeometry, roadMaterial);
+road.rotation.x = -Math.PI / 2;
+scene.add(road);
+
+// 자동차
+const carGeometry = new THREE.BoxGeometry(1, 0.5, 2);
+const carMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+const car = new THREE.Mesh(carGeometry, carMaterial);
+car.position.y = 0.25;
+scene.add(car);
+
+// 카메라 위치
+camera.position.set(0, 3, 5);
+
+// 속도
+let speed = 0;
+let maxSpeed = 0.5;
+
+// 키 입력
+const keys = {};
+document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// 장애물
+const obstacles = [];
+function createObstacle() {
+  const geo = new THREE.BoxGeometry(1, 1, 1);
+  const mat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+  const obs = new THREE.Mesh(geo, mat);
+  obs.position.set((Math.random()-0.5)*10, 0.5, -100);
+  scene.add(obs);
+  obstacles.push(obs);
+}
+setInterval(createObstacle, 1000);
+
+// 게임 루프
+function animate() {
+  requestAnimationFrame(animate);
+
+  // 가속 / 감속
+  if (keys['w']) speed += 0.01;
+  if (keys['s']) speed -= 0.02;
+  speed *= 0.98;
+  speed = Math.max(0, Math.min(maxSpeed, speed));
+
+  // 좌우 이동
+  if (keys['a']) car.position.x -= 0.1;
+  if (keys['d']) car.position.x += 0.1;
+
+  // 도로 이동 효과
+  road.position.z += speed * 10;
+  if (road.position.z > 50) road.position.z = 0;
+
+  // 장애물 이동 및 충돌
+  obstacles.forEach(obs => {
+    obs.position.z += speed * 20;
+
+    // 충돌 판정
+    if (Math.abs(obs.position.z - car.position.z) < 1 &&
+        Math.abs(obs.position.x - car.position.x) < 1) {
+      alert('충돌! 게임 종료');
+      location.reload();
+    }
+  });
+
+  // 카메라 따라오기
+  camera.position.x = car.position.x;
+  camera.lookAt(car.position);
+
+  renderer.render(scene, camera);
+}
+animate();
+
+// 화면 리사이즈
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
